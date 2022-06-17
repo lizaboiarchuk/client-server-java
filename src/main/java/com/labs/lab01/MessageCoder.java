@@ -1,5 +1,6 @@
 package com.labs.lab01;
 
+import javax.annotation.processing.SupportedSourceVersion;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
@@ -39,13 +40,17 @@ public class MessageCoder {
                 .put(START_BYTE)
                 .put(packet.getClientId())
                 .putLong(packet.getPacketId())
-                .putInt(contentEncrypted.length)
+                .putInt(minMessageLength + contentEncrypted.length)
                 .array();
 
-        byte[] body = ByteBuffer.allocate(contentEncrypted.length)
+        byte[] body = ByteBuffer.allocate(minMessageLength + contentEncrypted.length)
                 .order(ByteOrder.BIG_ENDIAN)
+                .putInt(message.getcType())
+                .putInt(message.getbUserId())
                 .put(contentEncrypted)
                 .array();
+
+        System.out.println(contentEncrypted);
 
         return ByteBuffer.allocate(18 + minMessageLength + contentEncrypted.length)
                 .order(ByteOrder.BIG_ENDIAN)
@@ -79,15 +84,21 @@ public class MessageCoder {
         if (CRC16.crc16(head)!= cHead) { throw new IllegalArgumentException("CRC16 head broken :( "); }
 
         // check packet body for validity
-        byte [] contentBytes = Arrays.copyOfRange(bytes, 16, 16 + contentLen);
+        byte [] messageBytes = Arrays.copyOfRange(bytes, 16, 16 + contentLen);
+
+        int cType = buffer.getInt();
+        int bUserId = buffer.getInt();
+        byte[] content = Arrays.copyOfRange(messageBytes,8, contentLen);
+
         short cContent = buffer.getShort(16 + contentLen);
-        if (CRC16.crc16(contentBytes) != cContent) { throw new IllegalArgumentException("CRC16 body broken :( "); }
+
+        if (CRC16.crc16(messageBytes) != cContent) { throw new IllegalArgumentException("CRC16 body broken :( "); }
 
         // decrypt message content
         cipher.init(Cipher.DECRYPT_MODE, secret);
-        byte[] decodedContent = cipher.doFinal(contentBytes);
+        byte[] decodedContent = cipher.doFinal(content);
 
-        return new Packet(clientId, packetId, new Message(decodedContent));
+        return new Packet(clientId, packetId, new Message(decodedContent, cType, bUserId));
     }
 
 
