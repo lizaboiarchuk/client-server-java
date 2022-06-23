@@ -19,6 +19,6 @@ public class Packet {
 
     @Override
     public String toString() {
-        return "Packet:\n" + "Client Id - " + this.client_id + "\nPacket Id - " + this.packet_id + "\nMessage - " + this.message + '\n';
+        return "Packet:" + " Client Id - " + this.client_id + "; Packet Id - " + this.packet_id + "; Message - " + this.message + ';';
     }
 }

@@ -9,30 +9,16 @@ import java.security.NoSuchAlgorithmException;
 
 public class Main
 {
-
     public static void main( String[] args ) throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
 
-        // create message
-        String message = "Hey you there";
-        Packet packet = new Packet((byte)1,10L, new Message(message, 0, 1));
-        System.out.println("Created packet\n" + packet);
+        FakeReceiver receiver = new FakeReceiver();
+        MessageDecryptor coder = new MessageDecryptor();
+        FakeProcessor processor = new FakeProcessor();
+        FakeSender sender = new FakeSender();
 
-        MessageCoder coder = new MessageCoder();
-
-        // encode packet
-        byte[] encoded = coder.encode(packet);
-        System.out.println("Encoded packet bytes: " + encoded);
-
-        // decode bytes
-        Packet decoded = coder.decode(encoded);
-        System.out.println("\nDecoded packet\n" + decoded);
-
-
-
-
-
-
-
-
+        byte[] bytes = receiver.receiveMessage();
+        Packet packet = coder.decode(bytes);
+        byte[] result = processor.process(packet.getMessage());
+        sender.sendMessage(result);
     }
 }

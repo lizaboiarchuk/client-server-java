@@ -1,6 +1,8 @@
 package com.labs.lab01;
 
-import javax.annotation.processing.SupportedSourceVersion;
+import com.labs.lab01.interfaces.Decryptor;
+import com.labs.lab01.interfaces.Encryptor;
+
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
@@ -8,9 +10,14 @@ import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 
-public class MessageCoder {
+public class MessageDecryptor extends Thread implements Decryptor {
+
+    public static Queue<Packet> decryptor_que;
+
 
     private static final String ENCRYPTION_STRING_KEY = "encryptkeystring";
     private static final byte START_BYTE = 0x13;
@@ -19,50 +26,22 @@ public class MessageCoder {
     private static Cipher cipher;
 
 
-    public MessageCoder() throws NoSuchPaddingException, NoSuchAlgorithmException {
+    public MessageDecryptor() throws NoSuchPaddingException, NoSuchAlgorithmException {
+        super("DecryptorThread");
         byte[] encryptionBytes = ENCRYPTION_STRING_KEY.getBytes();
         cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         secret = new SecretKeySpec(encryptionBytes, "AES");
+        decryptor_que = new ConcurrentLinkedDeque<>();
+        start();
     }
 
+    public static byte[] decryptMessage(byte[] bytes) throws  InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
 
-    public static byte[] encode(Packet packet) throws BadPaddingException,IllegalBlockSizeException, InvalidKeyException {
-
-        Message message = packet.getMessage();
-
-        // encrypt message content
-        cipher.init(Cipher.ENCRYPT_MODE, secret);
-        byte[] contentEncrypted = cipher.doFinal(message.getMessageContent());
-
-        // create packet
-        byte[] head = ByteBuffer.allocate(14)
-                .order(ByteOrder.BIG_ENDIAN)
-                .put(START_BYTE)
-                .put(packet.getClientId())
-                .putLong(packet.getPacketId())
-                .putInt(minMessageLength + contentEncrypted.length)
-                .array();
-
-        byte[] body = ByteBuffer.allocate(minMessageLength + contentEncrypted.length)
-                .order(ByteOrder.BIG_ENDIAN)
-                .putInt(message.getcType())
-                .putInt(message.getbUserId())
-                .put(contentEncrypted)
-                .array();
-
-        System.out.println(contentEncrypted);
-
-        return ByteBuffer.allocate(18 + minMessageLength + contentEncrypted.length)
-                .order(ByteOrder.BIG_ENDIAN)
-                .put(head)
-                .putShort(CRC16.crc16(head))
-                .put(body)
-                .putShort(CRC16.crc16(body))
-                .array();
+        cipher.init(Cipher.DECRYPT_MODE, secret);
+        return cipher.doFinal(bytes);
     }
 
-
-    public static Packet decode(byte[] bytes) throws  BadPaddingException,  IllegalBlockSizeException, InvalidKeyException {
+    public Packet decode(byte[] bytes) throws BadPaddingException,  IllegalBlockSizeException, InvalidKeyException {
 
         ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
         if (buffer.get() != START_BYTE) { throw new IllegalArgumentException("Invalid start byte :( "); }
@@ -102,4 +81,30 @@ public class MessageCoder {
     }
 
 
+    public static void decrypt_accept(Packet p){
+        decryptor_que.add(p);
+    }
+
+    @Override
+    public void run(){
+        while (true){
+            try{
+
+                Packet pak = decryptor_que.poll();
+                if (pak!=null) {
+                    // шифрування
+                    byte[] resStr = decryptMessage(pak.getMessage().getMessageContent());
+                    Packet packetToPross = new Packet(pak.getClientId(), pak.getPacketId(),
+                            new Message(resStr,
+                                        pak.getMessage().getcType(),
+                                        pak.getMessage().getbUserId()));
+
+                    System.out.println("!Server decrypted: " + packetToPross.toString());
+                    FakeProcessor.pross_accept(packetToPross);
+                }
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
 }

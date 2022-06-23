@@ -4,6 +4,15 @@ import java.nio.charset.StandardCharsets;
 
 public class Message {
 
+    public static enum cType {
+        GET_PRODUCT_TOTAL_NUMBER,
+        SUBTRACT_PRODUCT,
+        ADD_PRODUCT,
+        ADD_PRODUCT_GROUP,
+        ADD_TITLE_TO_PRODUCT_GROUP,
+        SET_PRODUCT_PRICE,
+    }
+
     private final byte[] content;
     private final int cType;
     private final int bUserId;
