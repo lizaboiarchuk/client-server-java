@@ -1,17 +1,17 @@
 package com.labs.practice02;
 
 public class Data {
-    private int state=1;
+    private int state = 1;
 
     public int getState() { return state; }
 
-    public void Tic(){
+    public void Tic() {
         System.out.print("Tic-");
-        state=2;
+        state = 2;
     }
-    public void Tak(){
+    public void Tak() {
         System.out.println("Tak");
-        state=1;
+        state = 1;
     }
 
 

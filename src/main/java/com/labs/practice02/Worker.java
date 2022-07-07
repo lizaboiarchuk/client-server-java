@@ -12,12 +12,25 @@ public class Worker extends Thread{
 	}
 	
 	@Override
-	public void run(){
+	public void run() {
 		super.run();
-		for (int i=0;i<5;i++){
-			if(id==1) data.Tic();
-			else data.Tak();
+
+		for (int i = 0; i < 5; i++) {
+			synchronized (data) {
+
+				try {
+					while (id != data.getState()) {
+						data.wait();
+					}
+					if (id == 1) data.Tic();
+					else data.Tak();
+					data.notify();
+
+
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+			}
 		}
 	}
-
 }
